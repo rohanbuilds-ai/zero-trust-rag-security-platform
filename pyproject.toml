@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=74.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,9 +7,11 @@ name = "zero-trust-rag"
 version = "0.1.0"
 description = "A Zero-Trust Security Platform for Retrieval-Augmented Generation (RAG)"
 readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 authors = [
-    { name = "Security Engineering Team" }
+    { name = "rohanbuilds-ai" }
 ]
 dependencies = [
     "fastapi>=0.110.0,<1.0.0",

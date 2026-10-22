@@ -430,7 +430,7 @@ While this platform implements deterministic security boundaries for local and p
 
 ## Licensing & Open-Source Status
 
-No open-source license has been applied to this repository yet. Under standard international copyright law, software published to a public repository without an explicit license remains the exclusive intellectual property of the author and is not automatically open-source software. An explicit license (such as Apache 2.0 or MIT) should be chosen and approved by the author before public release.
+This project is open-source software licensed under the **Apache License, Version 2.0**. See the top-level [LICENSE](LICENSE) file for the full license text and terms.
 
 ---
 

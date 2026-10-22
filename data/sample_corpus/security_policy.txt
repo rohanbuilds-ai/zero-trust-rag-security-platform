@@ -1,0 +1,13 @@
+# Zero-Trust Security Policy (Tenant: Default Enterprise)
+
+## 1. Principle of Least Privilege
+All enterprise services, data stores, and retrieval mechanisms must adhere to the Principle of Least Privilege. Access is restricted to authenticated identities possessing valid operational clearance.
+
+## 2. Cryptographic Attestation
+Every document entering the corporate knowledge base must be hashed with SHA-256 upon arrival. Untrusted metadata provided by clients is stripped before database storage.
+
+## 3. Data Classification
+Documents must be classified as PUBLIC, INTERNAL, CONFIDENTIAL, or RESTRICTED. Retrieval systems must enforce classification checks before any chunk is passed to an AI generation context.
+
+## 4. Immediate Access Revocation
+When a document is marked REVOKED by an authorized compliance officer, it must be purged from indexing within zero latency. Any cached vectors must fail closed during retrieval verification.

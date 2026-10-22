@@ -1,0 +1,100 @@
+name: CI - Zero-Trust RAG Security Platform
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-evaluate:
+    name: Security Tests & Evaluation (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies (core and test extras)
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -e ".[test]"
+
+      - name: Run automated test suite with strict warning enforcement
+        run: |
+          pytest -v -W error
+
+      - name: Execute quantitative security evaluation benchmark
+        run: |
+          python scripts/evaluate_security.py --output-dir ci_reports/ --db-path ci_reports/ci_eval.db
+
+      - name: Validate evaluation report integrity and hard acceptance invariants
+        run: |
+          python -c "
+          import json, sys
+          from pathlib import Path
+
+          json_path = Path('ci_reports/evaluation_report.json')
+          md_path = Path('ci_reports/evaluation_report.md')
+
+          if not json_path.exists() or not md_path.exists():
+              print('[-] CI Error: Evaluation reports not generated.', file=sys.stderr)
+              sys.exit(1)
+
+          data = json.loads(json_path.read_text(encoding='utf-8'))
+          crit = data.get('acceptance_criteria', {})
+
+          # Verify all 6 hard acceptance invariants
+          invariants = [
+              ('zero_cross_tenant_leakage', crit.get('zero_cross_tenant_leakage')),
+              ('zero_unauthorized_content_disclosed', crit.get('zero_unauthorized_content_disclosed')),
+              ('zero_revoked_content_exposed', crit.get('zero_revoked_content_exposed')),
+              ('zero_tampered_chunks_accepted', crit.get('zero_tampered_chunks_accepted')),
+              ('zero_unredacted_sensitive_values_in_egress', crit.get('zero_unredacted_sensitive_values_in_egress')),
+              ('zero_revoked_reactivation', crit.get('zero_revoked_reactivation')),
+          ]
+
+          failed = False
+          for name, val in invariants:
+              if val is not True:
+                  print(f'[-] Security Invariant Violated: {name} = {val}', file=sys.stderr)
+                  failed = True
+
+          if not crit.get('overall_acceptance_passed', False) or failed:
+              print('[-] CI Benchmark Failed: Not all hard acceptance criteria were met.', file=sys.stderr)
+              sys.exit(1)
+
+          print('[+] CI Benchmark Verified: All 6 hard security criteria passed cleanly.')
+          "
+
+      - name: Verify audit trail integrity and minimum event count
+        run: |
+          python scripts/verify_audit_trail.py --db-path ci_reports/ci_eval.db --min-events 10
+
+  docker-build:
+    name: Docker Lint & Container Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose Configuration
+        run: |
+          docker compose config
+
+      - name: Build Docker Container Image
+        run: |
+          docker build -t zero-trust-rag:ci .

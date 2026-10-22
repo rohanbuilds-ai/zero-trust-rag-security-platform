@@ -1,0 +1,49 @@
+# Git and Version Control
+.git/
+.gitignore
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python Bytecode and Caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Local databases, vectors, and runtime storage
+data/storage/*.db
+data/storage/*.sqlite
+data/storage/*.sqlite3
+data/storage/vector_store/
+chroma_data/
+*.db
+*.sqlite3
+
+# Runtime Evaluation Reports
+reports/
+ci_reports/
+
+# Environment Variables and Secrets
+.env
+.env.local
+.env.*.local
+
+# IDE and Editor configs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS Artifacts
+.DS_Store
+Thumbs.db

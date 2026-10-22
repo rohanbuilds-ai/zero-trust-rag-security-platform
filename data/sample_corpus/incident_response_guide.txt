@@ -1,0 +1,13 @@
+# Incident Response Guide: Vector Store Tampering and Injection
+
+## Phase 1: Identification
+Security engineers monitor retrieval audit logs for anomalous semantic drift, repeated similarity monopolization, or unexpected cross-tenant queries.
+
+## Phase 2: Containment
+If a document is suspected of carrying prompt injection payloads or poisoned factual statements, its authoritative state is updated to QUARANTINED. Quarantined documents are immediately blocked from query candidate sets.
+
+## Phase 3: Eradication
+The poisoned document chunks are identified via chunk content hash. The vector store collection is purged of the affected vectors, and the SQLite authoritative record is marked DELETED.
+
+## Phase 4: Post-Mortem Audit
+Audit events containing the uploader ID, SHA-256 provenance hash, and query history are preserved in immutable JSON records for regulatory compliance.

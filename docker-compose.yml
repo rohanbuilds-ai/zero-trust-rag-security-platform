@@ -1,0 +1,39 @@
+services:
+  rag-security-platform:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: zero-trust-rag:latest
+    container_name: zero_trust_rag_app
+    restart: unless-stopped
+    ports:
+      # Expose only to host loopback interface to prevent unauthorized LAN/public access
+      - "127.0.0.1:8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DATA_DIR=/app/data
+      - STORAGE_DIR=/app/data/storage
+      - SQLITE_PATH=/app/data/storage/authoritative_metadata.db
+      - VECTOR_STORE_PATH=/app/data/storage/vector_store
+      - VECTOR_STORE_TYPE=chroma
+      - USE_MOCK_EMBEDDINGS=true
+      - API_TITLE=Zero-Trust RAG Security Platform
+      - DEBUG=false
+    volumes:
+      # Named volume for persistent SQLite metadata and ChromaDB vector store
+      - rag-storage:/app/data/storage
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  rag-storage:
+    name: zero_trust_rag_storage

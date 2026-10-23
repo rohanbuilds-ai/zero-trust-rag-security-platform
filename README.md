@@ -4,6 +4,15 @@ A production-grade reference architecture and deterministic defensive engine des
 
 ---
 
+## Technical Documentation & Portfolio Resources
+
+For in-depth architectural specifications, technical walkthroughs, and interview discussions:
+- 📖 [**System Architecture & Threat Model**](docs/ARCHITECTURE.md): Complete data-flow specifications, sequence diagrams, trust boundaries, component responsibilities, and threat model matrix.
+- 🛡️ [**Interactive Security Demonstration Guide**](docs/SECURITY_DEMO.md): A reproducible 3–5 minute walkthrough of the 8 defensive stages, with curl examples and CLI execution evidence.
+- 🎯 [**AI Security Engineering Interview Guide**](docs/INTERVIEW_GUIDE.md): 30-second elevator pitch, 5 key engineering trade-offs, defensive reasoning, and failure mode analysis.
+
+---
+
 ## Architectural Principles ("Never Trust, Always Verify")
 
 1. **Identity & Tenant Isolation (Phase 2)**: Authenticated server-side principal context (`principal_id`, `tenant_id`, `role`, `clearance_level`). Client requests cannot assert, spoof, or override security metadata.

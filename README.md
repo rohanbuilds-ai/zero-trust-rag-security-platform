@@ -168,6 +168,125 @@ This ensures downstream models parse retrieved passages strictly as passive data
 
 ---
 
+## Installation & Quickstart
+
+### Prerequisites
+- **Python**: `>= 3.11` (validated across Python 3.11, 3.12, and 3.13)
+- **Git**: `>= 2.30`
+
+All commands below should be executed from the root of the cloned repository.
+
+### 1. Clone the Public Repository
+```bash
+git clone https://github.com/rohanbuilds-ai/zero-trust-rag-security-platform.git
+cd zero-trust-rag-security-platform
+```
+
+### 2. Create and Activate a Virtual Environment
+
+**Windows PowerShell:**
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+**macOS / Linux:**
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. Install Package Dependencies
+
+First, upgrade core packaging tools:
+```powershell
+python -m pip install --upgrade pip setuptools wheel
+```
+
+Install the package in editable mode using the optional dependency group matching your environment:
+
+- **Test & Evaluation (Recommended for CI, benchmarks, and local security testing):**
+  ```powershell
+  pip install -e ".[test]"
+  ```
+  *Installs core platform packages (`fastapi`, `uvicorn`, `pydantic`, `numpy`, `chromadb`) and test harnesses (`pytest`, `pytest-asyncio`, `httpx`). Uses fast, deterministic mock embeddings without requiring external neural model downloads.*
+
+- **Full Suite (Optional Sentence-Transformers & Linting):**
+  ```powershell
+  pip install -e ".[all]"
+  ```
+  *Installs all dependencies above plus `sentence-transformers` for real neural embeddings and `ruff` for code linting.*
+
+- **Development Only:**
+  ```powershell
+  pip install -e ".[dev]"
+  ```
+  *Installs test dependencies and `ruff`.*
+
+### 4. Seed the Local Knowledge Base (Required for Fresh Clones)
+
+> [!NOTE]
+> **Fresh Clone Database Behavior**: SQLite databases and vector directories (`*.db`, `*.sqlite`, `*.sqlite3`, `data/storage/`, and `chroma_data/`) are deliberately excluded from version control via `.gitignore`. A fresh clone contains no pre-existing databases; it does **not** include the author's persistent database (which holds 15 documents, 24 chunks, and 38 audit events).
+
+To initialize the default SQLite store (`data/storage/authoritative_metadata.db`) and populate it with sample documents:
+
+```powershell
+python scripts/seed_database.py
+```
+
+*Seeding Behavior & Effects:*
+- **Sample Corpus**: Reads 3 sample files from `data/sample_corpus/` (`company_security_policy.txt`, `helios_architecture.txt`, `q3_financial_results.txt`).
+- **Classification & ACLs**: Automatically assigns classification levels (`PUBLIC`, `INTERNAL`, `CONFIDENTIAL`) and default tenant ownership (`default_tenant`).
+- **Database Initialization**: Populates `data/storage/authoritative_metadata.db` with **3 documents**, **6 chunks**, and **7 security audit events**.
+- **Idempotency Note**: Running `seed_database.py` repeatedly is safe. Because document IDs are generated with unique identifiers (`doc_<uuid>`), each execution appends new records rather than overwriting or crashing existing tables.
+
+### 5. Run Verification & Benchmarks
+
+```powershell
+# 1. Run the automated test suite (94 passed, 0 warnings)
+pytest -v -W error
+
+# 2. Run the 170-scenario offline security evaluation suite
+python scripts/evaluate_security.py
+
+# 3. Run the 8-stage interactive security demonstration
+python scripts/demo.py
+
+# 4. Verify cryptographic tamper-evident audit trail integrity
+python scripts/verify_audit_trail.py
+```
+
+### 6. Start the Local API Server & Check Health
+
+Start the FastAPI application on `127.0.0.1:8000`:
+```powershell
+uvicorn zero_trust_rag.main:app --host 127.0.0.1 --port 8000
+```
+
+In another terminal, query the public health endpoint:
+```powershell
+curl http://127.0.0.1:8000/api/v1/health
+```
+
+*Expected response:*
+```json
+{
+  "status": "healthy",
+  "timestamp": "2026-10-23T02:29:56.625608+00:00",
+  "components": {
+    "authoritative_sqlite": "connected",
+    "vector_store": "ready",
+    "indexed_vectors_count": 6
+  },
+  "config": {
+    "use_mock_embeddings": true,
+    "embedding_dimension": 384
+  }
+}
+```
+
+---
+
 ## Running the Security Test Suite
 
 The test suite contains **94 automated tests** covering regression checks, identity resolution, BOLA/IDOR protection, cross-tenant isolation, two-stage authorization, document trust, prompt injection inspection, safe context assembly, DLP redaction, and the evaluation framework:
@@ -175,6 +294,9 @@ The test suite contains **94 automated tests** covering regression checks, ident
 ```powershell
 .\.venv\Scripts\pytest -v -W error
 ```
+
+> [!NOTE]
+> **Persistent Database Test Invariant**: When executed against a seeded database (`data/storage/authoritative_metadata.db`), all **94 tests pass**. In an unseeded clean clone where the database does not yet exist, **93 tests pass and 1 test** (`test_evaluation_preserves_persistent_user_database`) is skipped gracefully with `Skipped: Persistent metadata database does not exist`. Run `python scripts/seed_database.py` to enable the full 94-test suite.
 
 ### Running Specific Test Suites
 ```powershell
@@ -337,6 +459,9 @@ An automated 8-stage demonstration script is provided to verify all core securit
 .\.venv\Scripts\python scripts/demo.py
 ```
 
+> [!NOTE]
+> **Ephemeral Demonstration Database Lifecycle**: `scripts/demo.py` creates an isolated temporary directory (`tempfile.TemporaryDirectory`) containing an ephemeral SQLite database (`demo_authoritative.db`). In Step 8, it validates the audit trail and cumulative cryptographic digest internally before the script exits and automatically deletes the temporary directory. As a result, the demonstration database is not persisted to disk and cannot be queried after script completion.
+
 ### Demonstration Execution Flow:
 1. **Authorized Document Ingestion**: Contributor Bob ingests an internal Helios architecture document; computes and records SHA-256 provenance hash.
 2. **Authorized Retrieval & Evidence Assembly**: Reader Alice queries the knowledge base; receives authoritative citation and passive `<retrieved_evidence_envelope>` with CDATA defanging.
@@ -354,12 +479,15 @@ An automated 8-stage demonstration script is provided to verify all core securit
 The platform logs every authorization decision, ingestion event, quarantine action, and search query hash to SQLite without disclosing plaintext secrets. You can verify the integrity of the audit trail at any time:
 
 ```powershell
-# Verify persistent metadata audit trail
+# Verify persistent metadata audit trail (requires seeded database)
 .\.venv\Scripts\python scripts/verify_audit_trail.py --db-path data/storage/authoritative_metadata.db
 
 # Verify custom or evaluation database
 .\.venv\Scripts\python scripts/verify_audit_trail.py --db-path reports/ci_eval.db --min-events 10
 ```
+
+> [!IMPORTANT]
+> **Database Existence Requirement**: In a fresh repository clone, `data/storage/authoritative_metadata.db` does not exist because SQLite databases are untracked by Git (`.gitignore`). Running `verify_audit_trail.py` on an unseeded fresh clone will fail with `Database file not found`. Run `python scripts/seed_database.py` first to initialize the database with sample records and 7 audit events before verifying.
 
 > [!NOTE]
 > **Tamper-Evidence vs. Immutability**: The audit trail maintains sequential cryptographic digest continuity ($H_i = \text{SHA-256}(H_{i-1} \parallel \text{Event}_i)$). It is **tamper-evident**—any post-facto modification or deletion of past events will invalidate the computed digest. However, without external multi-party cryptographic notarization or hardware-rooted timestamping, a local host administrator with full SQLite access could theoretically recompute the chain from genesis.
@@ -370,13 +498,15 @@ The platform logs every authorization decision, ingestion event, quarantine acti
 
 | Action | PowerShell Command (Windows) | Portable Python Alternative |
 | :--- | :--- | :--- |
+| **Install Dependencies (Test)** | `pip install -e ".[test]"` | `pip install -e ".[test]"` |
+| **Install Dependencies (All)** | `pip install -e ".[all]"` | `pip install -e ".[all]"` |
+| **Seed Local Database** | `.\.venv\Scripts\python scripts/seed_database.py` | `python scripts/seed_database.py` |
 | **Start Local API** | `.\.venv\Scripts\uvicorn zero_trust_rag.main:app --host 127.0.0.1 --port 8000` | `python -m uvicorn zero_trust_rag.main:app --host 127.0.0.1 --port 8000` |
 | **Check Service Health** | `curl http://127.0.0.1:8000/api/v1/health` | `python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health').read().decode())"` |
 | **Run All 94 Tests** | `.\.venv\Scripts\pytest -v -W error` | `python -m pytest -v -W error` |
 | **Run 170 Benchmark Scenarios**| `.\.venv\Scripts\python scripts/evaluate_security.py` | `python scripts/evaluate_security.py` |
 | **Run Security Demo** | `.\.venv\Scripts\python scripts/demo.py` | `python scripts/demo.py` |
 | **Verify Audit Trail** | `.\.venv\Scripts\python scripts/verify_audit_trail.py` | `python scripts/verify_audit_trail.py` |
-| **Reset Ephemeral Demo Data**| `Remove-Item data/storage/demo_*.db -ErrorAction SilentlyContinue` | `python -c "import pathlib; [p.unlink() for p in pathlib.Path('data/storage').glob('demo_*.db')]"` |
 
 ---
 
